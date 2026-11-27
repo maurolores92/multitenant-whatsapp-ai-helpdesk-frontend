@@ -41,7 +41,7 @@ const TenantAiTrainingTab = ({ tenant }: Props) => {
   const [subTab, setSubTab] = useState(0)
   const [aiConfig, setAiConfig] = useState({
     geminiApiKey: '',
-    geminiModel: 'gemini-2.0-flash',
+    geminiModel: 'gemini-3.8-flash',
     aiTemperature: 0.2,
     aiSystemPrompt: '',
     aiEnabled: true,
@@ -94,7 +94,7 @@ const TenantAiTrainingTab = ({ tenant }: Props) => {
         ])
         setAiConfig({
           geminiApiKey: '',
-          geminiModel: configRes.data.geminiModel || 'gemini-2.0-flash',
+          geminiModel: configRes.data.geminiModel || 'gemini-3.8-flash',
           aiTemperature: configRes.data.aiTemperature ?? 0.2,
           aiSystemPrompt: configRes.data.aiSystemPrompt || '',
           aiEnabled: configRes.data.aiEnabled ?? true,
@@ -282,11 +282,9 @@ const TenantAiTrainingTab = ({ tenant }: Props) => {
               label='Modelo de IA (Google Gemini)'
               value={aiConfig.geminiModel}
               onChange={e => setAiConfig({ ...aiConfig, geminiModel: e.target.value })}
-              helperText='2.0 Flash ofrece la mejor velocidad para WhatsApp'
+              helperText='Gemini 3.8 Flash ofrece la mejor velocidad y soporte actual para WhatsApp'
             >
-              <MenuItem value='gemini-2.0-flash'>Google Gemini 2.0 Flash (Recomendado)</MenuItem>
-              <MenuItem value='gemini-1.5-flash'>Google Gemini 1.5 Flash</MenuItem>
-              <MenuItem value='gemini-1.5-pro'>Google Gemini 1.5 Pro (Mayor análisis)</MenuItem>
+              <MenuItem value='gemini-3.8-flash'>Google Gemini 3.8 Flash (Recomendado)</MenuItem>
             </CustomTextField>
 
             <Box sx={{ px: 2 }}>
