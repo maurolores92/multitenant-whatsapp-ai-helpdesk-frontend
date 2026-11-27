@@ -30,30 +30,31 @@ const navigation = (): VerticalNavItemsType => {
       subject: 'tickets'
     },
     {
-      title: 'IA Servicio Técnico',
-      icon: 'tabler:robot',
-      path: '/technical-ai',
-      action: 'read',
-      subject: 'technical-ai'
-    },
-    {
-      sectionTitle: 'Administración',
-      action: 'manage',
-      subject: 'users'
-    },
-    {
-      title: 'Empresa & Agentes',
-      icon: 'tabler:building',
-      path: '/companies',
-      action: 'manage',
-      subject: 'companies'
-    },
-    {
-      title: 'Usuarios y Permisos',
-      icon: 'tabler:users',
-      path: '/users',
-      action: 'manage',
-      subject: 'users'
+      title: 'Configuración',
+      icon: 'tabler:settings',
+      children: [
+        {
+          title: 'IA Servicio Técnico',
+          icon: 'tabler:robot',
+          path: '/technical-ai',
+          action: 'read',
+          subject: 'technical-ai'
+        },
+        {
+          title: 'Empresa & Agentes',
+          icon: 'tabler:building',
+          path: '/companies',
+          action: 'manage',
+          subject: 'companies'
+        },
+        {
+          title: 'Usuarios y Permisos',
+          icon: 'tabler:users',
+          path: '/users',
+          action: 'manage',
+          subject: 'users'
+        }
+      ]
     }
   ]
 }
