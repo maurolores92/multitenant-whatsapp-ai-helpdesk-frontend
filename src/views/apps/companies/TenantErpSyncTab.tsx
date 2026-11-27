@@ -13,6 +13,7 @@ import MenuItem from '@mui/material/MenuItem'
 import Typography from '@mui/material/Typography'
 import FormControlLabel from '@mui/material/FormControlLabel'
 import CircularProgress from '@mui/material/CircularProgress'
+import LinearProgress from '@mui/material/LinearProgress'
 
 // ** Third Party Imports
 import toast from 'react-hot-toast'
@@ -24,6 +25,7 @@ import CustomTextField from 'src/@core/components/mui/text-field'
 
 // ** API & Types
 import api from 'src/configs/api'
+import { useSocket } from 'src/hooks/useSocket'
 import { TenantItem } from './types'
 
 interface Props {
@@ -65,6 +67,29 @@ const TenantErpSyncTab = ({ tenant, onRefresh }: Props) => {
   const [lastSyncSummary, setLastSyncSummary] = useState<any>(null)
   const [problems, setProblems] = useState<ErpProblemPreview[]>([])
   const [testResult, setTestResult] = useState<any>(null)
+  const [syncProgress, setSyncProgress] = useState<number>(0)
+  const [syncLogs, setSyncLogs] = useState<
+    Array<{ timestamp: string; level: 'info' | 'success' | 'warn' | 'error'; message: string }>
+  >([])
+
+  useSocket({
+    onErpSyncProgress: data => {
+      if (data?.tenantId !== tenant.id) return
+      if (typeof data.progress === 'number') {
+        setSyncProgress(data.progress)
+      }
+      if (data.message) {
+        setSyncLogs(prev => [
+          ...prev.slice(-49),
+          {
+            timestamp: data.timestamp || new Date().toISOString(),
+            level: data.level || 'info',
+            message: data.message
+          }
+        ])
+      }
+    }
+  })
 
   const loadConfig = useCallback(async () => {
     setLoading(true)
@@ -138,10 +163,19 @@ const TenantErpSyncTab = ({ tenant, onRefresh }: Props) => {
 
   const handleRunSync = async () => {
     setSyncing(true)
+    setSyncProgress(2)
+    setSyncLogs([
+      {
+        timestamp: new Date().toISOString(),
+        level: 'info',
+        message: 'Iniciando sincronización ETL contra HelpCopies ERP...'
+      }
+    ])
     try {
       await api.patch(`/tenants/${tenant.id}/erp-sync/config`, form)
       const res = await api.post(`/tenants/${tenant.id}/erp-sync/run`)
       const s = res.data
+      setSyncProgress(100)
       toast.success(
         `ETL completado: +${s.customersCreated} clientes, +${s.equipmentsCreated} equipos, +${s.problemsCreated} problemas`
       )
@@ -348,6 +382,64 @@ const TenantErpSyncTab = ({ tenant, onRefresh }: Props) => {
           {syncing ? 'Sincronizando ETL...' : 'Sincronizar Ahora'}
         </Button>
       </Box>
+
+      {(syncing || syncLogs.length > 0) && (
+        <Paper
+          variant='outlined'
+          sx={{
+            p: 2.5,
+            bgcolor: '#0f172a',
+            color: '#e2e8f0',
+            borderColor: '#334155'
+          }}
+        >
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1.5 }}>
+            <Typography variant='subtitle2' sx={{ fontWeight: 700, color: '#f8fafc' }}>
+              {syncing ? 'Progreso de Sincronización en Vivo' : 'Registro de Última Sincronización'}
+            </Typography>
+            <Typography variant='caption' sx={{ color: '#94a3b8', fontWeight: 600 }}>
+              {syncProgress}%
+            </Typography>
+          </Box>
+          <LinearProgress
+            variant='determinate'
+            value={syncProgress}
+            color={syncLogs[syncLogs.length - 1]?.level === 'error' ? 'error' : 'success'}
+            sx={{ mb: 2, height: 6, borderRadius: 3 }}
+          />
+          <Box
+            sx={{
+              maxHeight: 200,
+              overflowY: 'auto',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 0.75,
+              fontFamily: 'monospace',
+              fontSize: '0.78rem'
+            }}
+          >
+            {syncLogs.map((entry, idx) => {
+              const color =
+                entry.level === 'success'
+                  ? '#4ade80'
+                  : entry.level === 'warn'
+                  ? '#fbbf24'
+                  : entry.level === 'error'
+                  ? '#f87171'
+                  : '#cbd5e1'
+
+              return (
+                <Box key={`${entry.timestamp}-${idx}`} sx={{ color, lineHeight: 1.4 }}>
+                  <span style={{ color: '#64748b', marginRight: 8 }}>
+                    [{new Date(entry.timestamp).toLocaleTimeString('es-AR')}]
+                  </span>
+                  {entry.message}
+                </Box>
+              )
+            })}
+          </Box>
+        </Paper>
+      )}
 
       {testResult && (
         <Alert severity='success'>

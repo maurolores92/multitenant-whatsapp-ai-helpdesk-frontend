@@ -8,6 +8,7 @@ export interface UseSocketOptions {
   onMessageSent?: (data: any) => void
   onNotification?: (data: any) => void
   onConversationUpdated?: (data: any) => void
+  onErpSyncProgress?: (data: any) => void
 }
 
 let globalSocket: Socket | null = null
@@ -23,19 +24,21 @@ export function disconnectGlobalSocket() {
 }
 
 export function useSocket(options: UseSocketOptions = {}) {
-  const { token, onNewMessage, onMessageSent, onNotification, onConversationUpdated } = options
+  const { token, onNewMessage, onMessageSent, onNotification, onConversationUpdated, onErpSyncProgress } = options
   const [isConnected, setIsConnected] = useState<boolean>(() => Boolean(globalSocket?.connected))
 
   const onNewMessageRef = useRef(onNewMessage)
   const onMessageSentRef = useRef(onMessageSent)
   const onNotificationRef = useRef(onNotification)
   const onConversationUpdatedRef = useRef(onConversationUpdated)
+  const onErpSyncProgressRef = useRef(onErpSyncProgress)
 
   useEffect(() => {
     onNewMessageRef.current = onNewMessage
     onMessageSentRef.current = onMessageSent
     onNotificationRef.current = onNotification
     onConversationUpdatedRef.current = onConversationUpdated
+    onErpSyncProgressRef.current = onErpSyncProgress
   })
 
   useEffect(() => {
@@ -103,6 +106,7 @@ export function useSocket(options: UseSocketOptions = {}) {
       globalSocket.on('chat:message_sent', data => onMessageSentRef.current?.(data))
       globalSocket.on('notification:new', data => onNotificationRef.current?.(data))
       globalSocket.on('chat:conversation_updated', data => onConversationUpdatedRef.current?.(data))
+      globalSocket.on('erp:sync_progress', data => onErpSyncProgressRef.current?.(data))
     } else {
       setIsConnected(Boolean(globalSocket.connected))
     }
