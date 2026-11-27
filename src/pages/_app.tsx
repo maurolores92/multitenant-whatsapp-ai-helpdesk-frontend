@@ -7,10 +7,6 @@ import { Router } from 'next/router'
 import type { NextPage } from 'next'
 import type { AppProps } from 'next/app'
 
-// ** Store Imports
-import { store } from 'src/store'
-import { Provider } from 'react-redux'
-
 // ** Loader Import
 import NProgress from 'nprogress'
 
@@ -115,40 +111,38 @@ const App = (props: ExtendedAppProps) => {
   const aclAbilities = Component.acl ?? defaultACLObj
 
   return (
-    <Provider store={store}>
-      <CacheProvider value={emotionCache}>
-        <Head>
-          <title>{`${themeConfig.templateName} - CRM WhatsApp Multi-Tenant & Soporte Técnico`}</title>
-          <meta
-            name='description'
-            content={`${themeConfig.templateName} – Plataforma CRM Multi-Tenant de WhatsApp Cloud API con Inteligencia Artificial y gestión de Órdenes de Servicio.`}
-          />
-          <meta name='keywords' content='HelpDesk IA, WhatsApp CRM, Soporte Técnico, Multi-Tenant, Vuexy' />
-          <meta name='viewport' content='initial-scale=1, width=device-width' />
-        </Head>
+    <CacheProvider value={emotionCache}>
+      <Head>
+        <title>{`${themeConfig.templateName} - CRM WhatsApp Multi-Tenant & Soporte Técnico`}</title>
+        <meta
+          name='description'
+          content={`${themeConfig.templateName} – Plataforma CRM Multi-Tenant de WhatsApp Cloud API con Inteligencia Artificial y gestión de Órdenes de Servicio.`}
+        />
+        <meta name='keywords' content='HelpDesk IA, WhatsApp CRM, Soporte Técnico, Multi-Tenant, Vuexy' />
+        <meta name='viewport' content='initial-scale=1, width=device-width' />
+      </Head>
 
-        <AuthProvider>
-          <SettingsProvider {...(setConfig ? { pageSettings: setConfig() } : {})}>
-            <SettingsConsumer>
-              {({ settings }) => {
-                return (
-                  <ThemeComponent settings={settings}>
-                    <Guard authGuard={authGuard} guestGuard={guestGuard}>
-                      <AclGuard aclAbilities={aclAbilities} guestGuard={guestGuard} authGuard={authGuard}>
-                        {getLayout(<Component {...pageProps} />)}
-                      </AclGuard>
-                    </Guard>
-                    <ReactHotToast>
-                      <Toaster position={settings.toastPosition} toastOptions={{ className: 'react-hot-toast' }} />
-                    </ReactHotToast>
-                  </ThemeComponent>
-                )
-              }}
-            </SettingsConsumer>
-          </SettingsProvider>
-        </AuthProvider>
-      </CacheProvider>
-    </Provider>
+      <AuthProvider>
+        <SettingsProvider {...(setConfig ? { pageSettings: setConfig() } : {})}>
+          <SettingsConsumer>
+            {({ settings }) => {
+              return (
+                <ThemeComponent settings={settings}>
+                  <Guard authGuard={authGuard} guestGuard={guestGuard}>
+                    <AclGuard aclAbilities={aclAbilities} guestGuard={guestGuard} authGuard={authGuard}>
+                      {getLayout(<Component {...pageProps} />)}
+                    </AclGuard>
+                  </Guard>
+                  <ReactHotToast>
+                    <Toaster position={settings.toastPosition} toastOptions={{ className: 'react-hot-toast' }} />
+                  </ReactHotToast>
+                </ThemeComponent>
+              )
+            }}
+          </SettingsConsumer>
+        </SettingsProvider>
+      </AuthProvider>
+    </CacheProvider>
   )
 }
 
