@@ -57,6 +57,7 @@ const TenantAiTrainingTab = ({ tenant, agentArea }: Props) => {
     aiSystemPrompt: '',
     aiEnabled: true,
     aiContextHours: 24,
+    aiResponseDelaySeconds: 60,
     currentAgentArea: (agentArea || 'TECHNICAL_SERVICE') as AgentArea,
     hasCustomApiKey: false,
     maskedApiKey: ''
@@ -149,6 +150,7 @@ const TenantAiTrainingTab = ({ tenant, agentArea }: Props) => {
           api.get(withScope(`/tenants/${tenant.id}/ai-training/examples`))
         ])
         const loadedHours = configRes.data.aiContextHours ?? 24
+        const loadedDelay = configRes.data.aiResponseDelaySeconds ?? 60
         const loadedArea = (configRes.data.agentArea || agentArea || 'TECHNICAL_SERVICE') as AgentArea
         setAiConfig({
           geminiApiKey: '',
@@ -157,6 +159,7 @@ const TenantAiTrainingTab = ({ tenant, agentArea }: Props) => {
           aiSystemPrompt: configRes.data.aiSystemPrompt || '',
           aiEnabled: configRes.data.aiEnabled ?? true,
           aiContextHours: loadedHours,
+          aiResponseDelaySeconds: loadedDelay,
           currentAgentArea: loadedArea,
           hasCustomApiKey: Boolean(configRes.data.hasCustomApiKey),
           maskedApiKey: configRes.data.maskedApiKey || ''
@@ -205,6 +208,7 @@ const TenantAiTrainingTab = ({ tenant, agentArea }: Props) => {
       }
       if (isTechnicalAgent) {
         body.aiContextHours = Number(aiConfig.aiContextHours) || 24
+        body.aiResponseDelaySeconds = Math.max(0, Number(aiConfig.aiResponseDelaySeconds ?? 60))
       }
       if (aiConfig.geminiApiKey.trim()) body.geminiApiKey = aiConfig.geminiApiKey.trim()
 
@@ -213,6 +217,7 @@ const TenantAiTrainingTab = ({ tenant, agentArea }: Props) => {
         ...prev,
         geminiApiKey: '',
         aiContextHours: res.data.aiContextHours ?? prev.aiContextHours,
+        aiResponseDelaySeconds: res.data.aiResponseDelaySeconds ?? prev.aiResponseDelaySeconds,
         hasCustomApiKey: Boolean(res.data.hasCustomApiKey),
         maskedApiKey: res.data.maskedApiKey || ''
       }))
@@ -463,16 +468,28 @@ const TenantAiTrainingTab = ({ tenant, agentArea }: Props) => {
           </Box>
 
           {isTechnicalAgent && (
-            <CustomTextField
-              type='number'
-              fullWidth
-              label='Ventana de memoria de chat IA (horas) — Solo Servicio Técnico'
-              value={aiConfig.aiContextHours}
-              inputProps={{ min: 1, max: 168 }}
-              onChange={e => setAiConfig({ ...aiConfig, aiContextHours: Number(e.target.value) || 24 })}
-              helperText='La IA recuerda el historial durante estas horas (24 h por defecto). Luego, si el chat seguía solo con la IA, se reinicia automáticamente; los chats derivados a técnicos no se interrumpen.'
-              sx={{ maxWidth: 460 }}
-            />
+            <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 3 }}>
+              <CustomTextField
+                type='number'
+                fullWidth
+                label='Ventana de memoria de chat IA (horas)'
+                value={aiConfig.aiContextHours}
+                inputProps={{ min: 1, max: 168 }}
+                onChange={e => setAiConfig({ ...aiConfig, aiContextHours: Number(e.target.value) || 24 })}
+                helperText='Historial por 24 h (solo Servicio Técnico; chats con técnicos no se interrumpen).'
+              />
+              <CustomTextField
+                type='number'
+                fullWidth
+                label='Demora programada de respuesta WhatsApp (segundos)'
+                value={aiConfig.aiResponseDelaySeconds}
+                inputProps={{ min: 0, max: 300 }}
+                onChange={e =>
+                  setAiConfig({ ...aiConfig, aiResponseDelaySeconds: Math.max(0, Number(e.target.value) || 0) })
+                }
+                helperText='La IA prepara la respuesta enseguida y la envía al cumplirse estos segundos (60 s = 1 min; 0 = envío inmediato).'
+              />
+            </Box>
           )}
 
           <CustomTextField
