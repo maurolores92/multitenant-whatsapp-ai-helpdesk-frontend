@@ -56,6 +56,8 @@ const TenantAiTrainingTab = ({ tenant, agentArea }: Props) => {
     aiTemperature: 0.2,
     aiSystemPrompt: '',
     aiEnabled: true,
+    aiContextHours: 24,
+    currentAgentArea: (agentArea || 'TECHNICAL_SERVICE') as AgentArea,
     hasCustomApiKey: false,
     maskedApiKey: ''
   })
@@ -91,7 +93,26 @@ const TenantAiTrainingTab = ({ tenant, agentArea }: Props) => {
 
   const [simInput, setSimInput] = useState('')
   const [isSimulating, setIsSimulating] = useState(false)
-  const [simHistory, setSimHistory] = useState<Array<{ sender: 'user' | 'bot'; text: string; meta?: any }>>([])
+  const [simHistory, setSimHistory] = useState<
+    Array<{ sender: 'user' | 'bot'; text: string; timestamp?: string; meta?: any }>
+  >([])
+
+  const simStorageKey = `helpdesk_sim_${tenant.id}_${selectedAgentId || agentArea || 'default'}`
+  const isTechnicalAgent = aiConfig.currentAgentArea === 'TECHNICAL_SERVICE'
+
+  const filterRecentSimHistory = (
+    items: Array<{ sender: 'user' | 'bot'; text: string; timestamp?: string; meta?: any }>,
+    hours: number,
+  ) => {
+    const cutoff = Date.now() - hours * 60 * 60 * 1000
+
+    return items.filter(item => {
+      if (!item.timestamp) return true
+      const ts = Date.parse(item.timestamp)
+
+      return Number.isNaN(ts) || ts >= cutoff
+    })
+  }
 
   const agentQuery = selectedAgentId
     ? `agentId=${selectedAgentId}`
@@ -127,15 +148,38 @@ const TenantAiTrainingTab = ({ tenant, agentArea }: Props) => {
           api.get(withScope(`/tenants/${tenant.id}/ai-training/knowledge`)),
           api.get(withScope(`/tenants/${tenant.id}/ai-training/examples`))
         ])
+        const loadedHours = configRes.data.aiContextHours ?? 24
+        const loadedArea = (configRes.data.agentArea || agentArea || 'TECHNICAL_SERVICE') as AgentArea
         setAiConfig({
           geminiApiKey: '',
           geminiModel: configRes.data.geminiModel || 'gemini-3.8-flash',
           aiTemperature: configRes.data.aiTemperature ?? 0.2,
           aiSystemPrompt: configRes.data.aiSystemPrompt || '',
           aiEnabled: configRes.data.aiEnabled ?? true,
+          aiContextHours: loadedHours,
+          currentAgentArea: loadedArea,
           hasCustomApiKey: Boolean(configRes.data.hasCustomApiKey),
           maskedApiKey: configRes.data.maskedApiKey || ''
         })
+        if (typeof window !== 'undefined' && loadedArea === 'TECHNICAL_SERVICE') {
+          try {
+            const raw = window.localStorage.getItem(simStorageKey)
+            if (raw) {
+              const parsed = JSON.parse(raw)
+              if (Array.isArray(parsed)) {
+                const valid = filterRecentSimHistory(parsed, loadedHours)
+                setSimHistory(valid)
+                if (valid.length === 0) {
+                  window.localStorage.removeItem(simStorageKey)
+                }
+              }
+            }
+          } catch {
+            // Ignorar storage corrupto
+          }
+        } else {
+          setSimHistory([])
+        }
         setRules(Array.isArray(rulesRes.data) ? rulesRes.data : [])
         setKnowledge(Array.isArray(kbRes.data) ? kbRes.data : [])
         setExamples(Array.isArray(examplesRes.data) ? examplesRes.data : [])
@@ -159,12 +203,16 @@ const TenantAiTrainingTab = ({ tenant, agentArea }: Props) => {
         aiSystemPrompt: aiConfig.aiSystemPrompt,
         aiEnabled: aiConfig.aiEnabled
       }
+      if (isTechnicalAgent) {
+        body.aiContextHours = Number(aiConfig.aiContextHours) || 24
+      }
       if (aiConfig.geminiApiKey.trim()) body.geminiApiKey = aiConfig.geminiApiKey.trim()
 
       const res = await api.patch(withScope(`/tenants/${tenant.id}/ai-training/config`), body)
       setAiConfig(prev => ({
         ...prev,
         geminiApiKey: '',
+        aiContextHours: res.data.aiContextHours ?? prev.aiContextHours,
         hasCustomApiKey: Boolean(res.data.hasCustomApiKey),
         maskedApiKey: res.data.maskedApiKey || ''
       }))
@@ -250,18 +298,67 @@ const TenantAiTrainingTab = ({ tenant, agentArea }: Props) => {
     }
   }
 
+  const persistSimHistory = (
+    items: Array<{ sender: 'user' | 'bot'; text: string; timestamp?: string; meta?: any }>,
+  ) => {
+    if (typeof window === 'undefined' || !isTechnicalAgent) return
+    try {
+      window.localStorage.setItem(simStorageKey, JSON.stringify(items.slice(-30)))
+    } catch {
+      // Ignorar límite de storage
+    }
+  }
+
+  const handleResetSimulation = () => {
+    setSimHistory([])
+    if (typeof window !== 'undefined') {
+      window.localStorage.removeItem(simStorageKey)
+    }
+    toast.success('Conversación del simulador reiniciada')
+  }
+
   const handleRunSimulation = async (e: FormEvent) => {
     e.preventDefault()
     if (!simInput.trim()) return
     const msg = simInput.trim()
+    const nowIso = new Date().toISOString()
+    const activeHistory = isTechnicalAgent ? filterRecentSimHistory(simHistory, aiConfig.aiContextHours) : []
+    const userTurn = { sender: 'user' as const, text: msg, timestamp: nowIso }
+    const withUser = [...activeHistory, userTurn]
+
     setSimInput('')
     setIsSimulating(true)
-    setSimHistory(prev => [...prev, { sender: 'user', text: msg }])
+    setSimHistory(withUser)
+    persistSimHistory(withUser)
+
     try {
-      const res = await api.post(withScope(`/tenants/${tenant.id}/ai-training/simulate`), { message: msg })
-      setSimHistory(prev => [...prev, { sender: 'bot', text: res.data.response, meta: res.data }])
+      const payload: any = { message: msg }
+      if (isTechnicalAgent && activeHistory.length > 0) {
+        payload.history = activeHistory.map(item => ({
+          sender: item.sender,
+          text: item.text,
+          ...(item.timestamp ? { timestamp: item.timestamp } : {})
+        }))
+      }
+      const res = await api.post(withScope(`/tenants/${tenant.id}/ai-training/simulate`), payload)
+      const botTurn = {
+        sender: 'bot' as const,
+        text: res.data.response,
+        timestamp: new Date().toISOString(),
+        meta: res.data
+      }
+      const nextHistory = [...withUser, botTurn]
+      setSimHistory(nextHistory)
+      persistSimHistory(nextHistory)
     } catch (err: any) {
-      setSimHistory(prev => [...prev, { sender: 'bot', text: `[Error]: ${err?.response?.data?.message || err.message}` }])
+      const errTurn = {
+        sender: 'bot' as const,
+        text: `[Error]: ${err?.response?.data?.message || err.message}`,
+        timestamp: new Date().toISOString()
+      }
+      const nextHistory = [...withUser, errTurn]
+      setSimHistory(nextHistory)
+      persistSimHistory(nextHistory)
     } finally {
       setIsSimulating(false)
     }
@@ -364,6 +461,19 @@ const TenantAiTrainingTab = ({ tenant, agentArea }: Props) => {
               </Typography>
             </Box>
           </Box>
+
+          {isTechnicalAgent && (
+            <CustomTextField
+              type='number'
+              fullWidth
+              label='Ventana de memoria de chat IA (horas) — Solo Servicio Técnico'
+              value={aiConfig.aiContextHours}
+              inputProps={{ min: 1, max: 168 }}
+              onChange={e => setAiConfig({ ...aiConfig, aiContextHours: Number(e.target.value) || 24 })}
+              helperText='La IA recuerda el historial durante estas horas (24 h por defecto). Luego, si el chat seguía solo con la IA, se reinicia automáticamente; los chats derivados a técnicos no se interrumpen.'
+              sx={{ maxWidth: 460 }}
+            />
+          )}
 
           <CustomTextField
             fullWidth
@@ -712,13 +822,23 @@ const TenantAiTrainingTab = ({ tenant, agentArea }: Props) => {
       {/* SUBTAB 4: SIMULADOR */}
       {subTab === 4 && (
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}>
-          <Alert severity='info'>
+          <Alert
+            severity='info'
+            action={
+              simHistory.length > 0 ? (
+                <Button color='inherit' size='small' onClick={handleResetSimulation} startIcon={<Icon icon='tabler:refresh' />}>
+                  Reiniciar chat
+                </Button>
+              ) : undefined
+            }
+          >
             Prueba en tiempo real cómo responde la IA de <strong>{tenant.name}</strong> combinando{' '}
             <strong>{rules.filter(r => r.isActive).length} reglas</strong>,{' '}
             <strong>{knowledge.filter(k => k.isActive).length} conocimientos</strong> y{' '}
-            <strong>{examples.length} ejemplos</strong>.
+            <strong>{examples.length} ejemplos</strong>
+            {isTechnicalAgent ? ` (memoria multi-turno activa por ${aiConfig.aiContextHours} h)` : ''}.
           </Alert>
-          <Paper variant='outlined' sx={{ height: 280, overflowY: 'auto', p: 3, display: 'flex', flexDirection: 'column', gap: 2 }}>
+          <Paper variant='outlined' sx={{ height: 320, overflowY: 'auto', p: 3, display: 'flex', flexDirection: 'column', gap: 2 }}>
             {simHistory.length === 0 ? (
               <Box sx={{ m: 'auto', textAlign: 'center', color: 'text.secondary' }}>
                 <Typography variant='body2'>
@@ -740,9 +860,25 @@ const TenantAiTrainingTab = ({ tenant, agentArea }: Props) => {
                     </Typography>
                   </Paper>
                   {msg.meta && (
-                    <Typography variant='caption' sx={{ color: 'text.disabled', mt: 0.5, display: 'block' }}>
-                      {msg.meta.isLiveAi ? 'Gemini Live' : 'Fallback'} • {msg.meta.modelUsed} • {msg.meta.executionTimeMs}ms
-                    </Typography>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap', mt: 0.5 }}>
+                      <Typography variant='caption' sx={{ color: 'text.disabled' }}>
+                        {msg.meta.isLiveAi ? 'Gemini Live' : 'Fallback'} • {msg.meta.modelUsed} • {msg.meta.executionTimeMs}ms
+                        {typeof msg.meta.historyMessagesUsed === 'number' && msg.meta.historyMessagesUsed > 0
+                          ? ` • ${msg.meta.historyMessagesUsed} msgs contexto`
+                          : ''}
+                      </Typography>
+                      {msg.meta.matchedEquipment && (
+                        <CustomChip
+                          rounded
+                          skin='light'
+                          size='small'
+                          color='success'
+                          label={`BD: ${msg.meta.matchedEquipment.code || msg.meta.matchedEquipment.name}${
+                            msg.meta.matchedEquipment.customerName ? ` (${msg.meta.matchedEquipment.customerName})` : ''
+                          }`}
+                        />
+                      )}
+                    </Box>
                   )}
                 </Box>
               ))
