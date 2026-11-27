@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
@@ -107,24 +108,98 @@ export default function LoginView() {
     <Box
       sx={{
         minHeight: '100vh',
-        width: '100vw',
-        bgcolor: '#0f172a',
+        width: '100%',
         display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        p: 2,
+        flexDirection: { xs: 'column', md: 'row' },
+        bgcolor: { xs: '#0f172a', md: '#ffffff' },
       }}
     >
-      <Card
+      {/* Panel Izquierdo: Ilustración Tecnológica */}
+      <Box
         sx={{
-          maxWidth: 460,
-          width: '100%',
-          borderRadius: 3,
-          boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.4)',
-          bgcolor: '#ffffff',
+          display: { xs: 'none', md: 'flex' },
+          flex: 1,
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          background: 'linear-gradient(145deg, #f4f7fc 0%, #e9f0f9 100%)',
+          p: { md: 4, lg: 6 },
+          position: 'relative',
+          overflow: 'hidden',
+          borderRight: '1px solid #e2e8f0',
         }}
       >
-        <CardContent sx={{ p: { xs: 3, sm: 4 } }}>
+        <Box
+          sx={{
+            width: '100%',
+            maxWidth: 680,
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            gap: 3,
+          }}
+        >
+          <Box
+            sx={{
+              width: '100%',
+              borderRadius: 4,
+              overflow: 'hidden',
+              boxShadow: '0 20px 45px -15px rgba(15, 23, 42, 0.14)',
+              border: '1px solid rgba(255, 255, 255, 0.8)',
+              bgcolor: '#f3f6fb',
+            }}
+          >
+            <Image
+              src="/images/login-helpdesk-ia.jpg"
+              alt="HelpDesk IA: atención automatizada por WhatsApp, creación de tickets y supervisión técnica"
+              width={1200}
+              height={896}
+              priority
+              style={{
+                width: '100%',
+                height: 'auto',
+                display: 'block',
+              }}
+            />
+          </Box>
+
+          <Box sx={{ textAlign: 'center', maxWidth: 520 }}>
+            <Typography variant="h6" sx={{ fontWeight: 700, color: '#0f172a', mb: 0.75 }}>
+              Soporte Técnico Inteligente en Tiempo Real
+            </Typography>
+            <Typography variant="body2" sx={{ color: '#475569', lineHeight: 1.6 }}>
+              La IA atiende consultas por WhatsApp, diagnostica incidencias y genera tickets
+              automáticamente bajo la supervisión de tu equipo técnico.
+            </Typography>
+          </Box>
+        </Box>
+      </Box>
+
+      {/* Panel Derecho: Formulario de Acceso */}
+      <Box
+        sx={{
+          width: { xs: '100%', md: 480, lg: 520 },
+          minHeight: '100vh',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          p: { xs: 2, sm: 4 },
+          bgcolor: { xs: '#0f172a', md: '#ffffff' },
+        }}
+      >
+        <Card
+          sx={{
+            maxWidth: 420,
+            width: '100%',
+            borderRadius: 3,
+            boxShadow: {
+              xs: '0 20px 25px -5px rgba(0, 0, 0, 0.4)',
+              md: 'none',
+            },
+            bgcolor: '#ffffff',
+          }}
+        >
+          <CardContent sx={{ p: { xs: 3, sm: 4, md: 2 } }}>
           {/* Header Brand */}
           <Box sx={{ textAlign: 'center', mb: 3 }}>
             <Box
@@ -236,14 +311,15 @@ export default function LoginView() {
           <Divider sx={{ my: 3 }} />
 
           {/* Footer security tag */}
-          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1 }}>
-            <SecurityIcon sx={{ fontSize: 16, color: '#10b981' }} />
-            <Typography variant="caption" sx={{ color: '#64748b' }}>
-              Autenticación JWT con RBAC y Aislamiento Multi-Tenant
-            </Typography>
-          </Box>
-        </CardContent>
-      </Card>
+            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1 }}>
+              <SecurityIcon sx={{ fontSize: 16, color: '#10b981' }} />
+              <Typography variant="caption" sx={{ color: '#64748b' }}>
+                Autenticación JWT con RBAC y Aislamiento Multi-Tenant
+              </Typography>
+            </Box>
+          </CardContent>
+        </Card>
+      </Box>
     </Box>
   );
 }
