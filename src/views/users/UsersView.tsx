@@ -69,7 +69,7 @@ export default function UsersView() {
 
   // Filtros
   const [searchQuery, setSearchQuery] = useState('');
-  const [roleFilter, setRoleFilter] = useState<'ALL' | 'ADMIN' | 'TECHNICIAN' | 'AGENT'>('ALL');
+  const [roleFilter, setRoleFilter] = useState<'ALL' | 'SUPER_ADMIN' | 'ADMIN' | 'TECHNICIAN' | 'AGENT'>('ALL');
 
   // Modal: Crear Usuario
   const [createModalOpen, setCreateModalOpen] = useState(false);
@@ -87,7 +87,7 @@ export default function UsersView() {
   const [editForm, setEditForm] = useState({
     name: '',
     email: '',
-    role: 'TECHNICIAN' as 'ADMIN' | 'TECHNICIAN' | 'AGENT',
+    role: 'TECHNICIAN' as UserItem['role'],
     isActive: true,
   });
   const [isSubmittingEdit, setIsSubmittingEdit] = useState(false);
@@ -232,7 +232,7 @@ export default function UsersView() {
     setEditForm({
       name: user.name,
       email: user.email,
-      role: (user.role === 'SUPER_ADMIN' ? 'ADMIN' : user.role) as any,
+      role: user.role,
       isActive: user.isActive,
     });
   };
@@ -247,19 +247,37 @@ export default function UsersView() {
       const token = localStorage.getItem('auth_token');
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
 
+      const payload =
+        editingUser.role === 'SUPER_ADMIN'
+          ? {
+              name: editForm.name,
+              email: editForm.email,
+            }
+          : editForm;
+
       const res = await fetch(`${apiUrl}/users/${editingUser.id}`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify(editForm),
+        body: JSON.stringify(payload),
       });
 
       const data = await res.json();
 
       if (!res.ok) {
         throw new Error(data.message || 'Error al actualizar usuario');
+      }
+
+      if (currentSessionUser?.id === editingUser.id) {
+        const updatedSessionUser = {
+          ...currentSessionUser,
+          name: data.name ?? editForm.name,
+          email: data.email ?? editForm.email,
+        };
+        localStorage.setItem('auth_user', JSON.stringify(updatedSessionUser));
+        setCurrentSessionUser(updatedSessionUser);
       }
 
       showNotification(`✔ Usuario ${data.name} actualizado exitosamente`);
@@ -319,8 +337,9 @@ export default function UsersView() {
 
   // Manejador: Cambio Rápido de Rol
   const handleOpenQuickRole = (user: UserItem) => {
+    if (user.role === 'SUPER_ADMIN') return;
     setQuickRoleModalUser(user);
-    setQuickSelectedRole((user.role === 'SUPER_ADMIN' ? 'ADMIN' : user.role) as any);
+    setQuickSelectedRole(user.role);
   };
 
   const handleSaveQuickRole = async () => {
@@ -407,20 +426,26 @@ export default function UsersView() {
       icon = <AgentIcon sx={{ fontSize: '0.95rem !important' }} />;
     }
 
+    const isSuperAdminRole = user.role === 'SUPER_ADMIN';
+
     return (
-      <Tooltip title="Clic para cambiar rol de este usuario" arrow placement="top">
+      <Tooltip
+        title={isSuperAdminRole ? 'Rol global del sistema (no editable)' : 'Clic para cambiar rol de este usuario'}
+        arrow
+        placement="top"
+      >
         <Chip
           icon={icon}
           label={label}
           color={color}
           size="small"
-          onClick={() => handleOpenQuickRole(user)}
+          onClick={isSuperAdminRole ? undefined : () => handleOpenQuickRole(user)}
           sx={{
             fontWeight: 700,
             fontSize: '0.75rem',
-            cursor: 'pointer',
+            cursor: isSuperAdminRole ? 'default' : 'pointer',
             height: 24,
-            '&:hover': { opacity: 0.85, boxShadow: 1 },
+            ...(isSuperAdminRole ? {} : { '&:hover': { opacity: 0.85, boxShadow: 1 } }),
           }}
         />
       </Tooltip>
@@ -524,6 +549,9 @@ export default function UsersView() {
               sx={{ minWidth: 180 }}
             >
               <MenuItem value="ALL">Todos los Roles</MenuItem>
+              {currentSessionUser?.role === 'SUPER_ADMIN' && (
+                <MenuItem value="SUPER_ADMIN">Superadministradores</MenuItem>
+              )}
               <MenuItem value="ADMIN">Administradores</MenuItem>
               <MenuItem value="TECHNICIAN">Técnicos</MenuItem>
               <MenuItem value="AGENT">Operadores de Soporte</MenuItem>
@@ -602,7 +630,9 @@ export default function UsersView() {
                               width: 36,
                               height: 36,
                               bgcolor:
-                                user.role === 'ADMIN'
+                                user.role === 'SUPER_ADMIN'
+                                  ? '#dc2626'
+                                  : user.role === 'ADMIN'
                                   ? '#4f46e5'
                                   : user.role === 'TECHNICIAN'
                                   ? '#d97706'
@@ -863,18 +893,20 @@ export default function UsersView() {
                 fullWidth
               />
 
-              <TextField
-                select
-                label="Rol en la Empresa"
-                value={editForm.role}
-                onChange={(e) => setEditForm({ ...editForm, role: e.target.value as any })}
-                required
-                fullWidth
-              >
-                <MenuItem value="ADMIN">🛡️ Administrador (Acceso total)</MenuItem>
-                <MenuItem value="TECHNICIAN">🔧 Técnico Especialista (Órdenes)</MenuItem>
-                <MenuItem value="AGENT">💬 Operador Soporte (WhatsApp)</MenuItem>
-              </TextField>
+              {editingUser.role !== 'SUPER_ADMIN' && (
+                <TextField
+                  select
+                  label="Rol en la Empresa"
+                  value={editForm.role}
+                  onChange={(e) => setEditForm({ ...editForm, role: e.target.value as any })}
+                  required
+                  fullWidth
+                >
+                  <MenuItem value="ADMIN">🛡️ Administrador (Acceso total)</MenuItem>
+                  <MenuItem value="TECHNICIAN">🔧 Técnico Especialista (Órdenes)</MenuItem>
+                  <MenuItem value="AGENT">💬 Operador Soporte (WhatsApp)</MenuItem>
+                </TextField>
+              )}
 
               <FormControlLabel
                 control={
