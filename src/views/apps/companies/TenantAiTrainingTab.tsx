@@ -282,9 +282,10 @@ const TenantAiTrainingTab = ({ tenant }: Props) => {
               label='Modelo de IA (Google Gemini)'
               value={aiConfig.geminiModel}
               onChange={e => setAiConfig({ ...aiConfig, geminiModel: e.target.value })}
-              helperText='Gemini 3.8 Flash ofrece la mejor velocidad y soporte actual para WhatsApp'
+              helperText='3.8 Flash ofrece mayor capacidad; 3.5 Flash-Lite menor latencia y saturación'
             >
               <MenuItem value='gemini-3.8-flash'>Google Gemini 3.8 Flash (Recomendado)</MenuItem>
+              <MenuItem value='gemini-3.5-flash-lite'>Google Gemini 3.5 Flash-Lite (Más estable / rápido)</MenuItem>
             </CustomTextField>
 
             <Box sx={{ px: 2 }}>
