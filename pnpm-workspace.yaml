@@ -1,0 +1,5 @@
+nodeLinker: hoisted
+autoInstallPeers: true
+strictPeerDependencies: false
+allowBuilds:
+  core-js: false
