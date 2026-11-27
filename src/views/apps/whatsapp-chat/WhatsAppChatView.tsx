@@ -126,7 +126,7 @@ const WhatsAppChatView = () => {
   const loadConversations = useCallback(async () => {
     setIsRefreshing(true)
     try {
-      const res = await api.get('/chat/conversations')
+      const res = await api.get('/chat/conversations?area=TECHNICAL_SERVICE')
       const data = Array.isArray(res.data) ? res.data : []
       if (data.length > 0) {
         const mapped: ConversationItem[] = data.map((c: any) => {

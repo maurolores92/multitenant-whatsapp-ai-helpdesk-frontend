@@ -30,14 +30,25 @@ import CustomTextField from 'src/@core/components/mui/text-field'
 
 // ** API & Subcomponents
 import api from 'src/configs/api'
-import { TenantItem, AiRuleItem, AiKnowledgeItem, AiExampleItem, AiRuleCategory } from './types'
+import {
+  AgentArea,
+  TenantItem,
+  WhatsAppAgentItem,
+  AiRuleItem,
+  AiKnowledgeItem,
+  AiExampleItem,
+  AiRuleCategory
+} from './types'
 import { AI_RULE_CATEGORIES, AiRuleDialog, AiKnowledgeDialog, AiExampleDialog } from './TenantAiModals'
 
 interface Props {
-  tenant: TenantItem
+  tenant: Pick<TenantItem, 'id' | 'name'>
+  agentArea?: AgentArea
 }
 
-const TenantAiTrainingTab = ({ tenant }: Props) => {
+const TenantAiTrainingTab = ({ tenant, agentArea }: Props) => {
+  const [agents, setAgents] = useState<WhatsAppAgentItem[]>([])
+  const [selectedAgentId, setSelectedAgentId] = useState<string>('')
   const [subTab, setSubTab] = useState(0)
   const [aiConfig, setAiConfig] = useState({
     geminiApiKey: '',
@@ -82,15 +93,39 @@ const TenantAiTrainingTab = ({ tenant }: Props) => {
   const [isSimulating, setIsSimulating] = useState(false)
   const [simHistory, setSimHistory] = useState<Array<{ sender: 'user' | 'bot'; text: string; meta?: any }>>([])
 
+  const agentQuery = selectedAgentId
+    ? `agentId=${selectedAgentId}`
+    : agentArea
+      ? `area=${agentArea}`
+      : ''
+  const withScope = (url: string) => (agentQuery ? `${url}${url.includes('?') ? '&' : '?'}${agentQuery}` : url)
+
+  useEffect(() => {
+    const loadAgents = async () => {
+      try {
+        const res = await api.get(`/agents?tenantId=${tenant.id}`)
+        const list: WhatsAppAgentItem[] = Array.isArray(res.data) ? res.data : []
+        setAgents(list)
+        if (list.length > 0) {
+          const preferred = agentArea ? list.find(a => a.area === agentArea) || list[0] : list[0]
+          setSelectedAgentId(prev => (prev && list.some(a => a.id === prev) ? prev : preferred.id))
+        }
+      } catch {
+        // Fallback silencioso: el backend resolverá el agente por área/defecto
+      }
+    }
+    loadAgents()
+  }, [tenant.id, agentArea])
+
   useEffect(() => {
     const fetchAll = async () => {
       setIsLoading(true)
       try {
         const [configRes, rulesRes, kbRes, examplesRes] = await Promise.all([
-          api.get(`/tenants/${tenant.id}/ai-training/config`),
-          api.get(`/tenants/${tenant.id}/ai-training/rules`),
-          api.get(`/tenants/${tenant.id}/ai-training/knowledge`),
-          api.get(`/tenants/${tenant.id}/ai-training/examples`)
+          api.get(withScope(`/tenants/${tenant.id}/ai-training/config`)),
+          api.get(withScope(`/tenants/${tenant.id}/ai-training/rules`)),
+          api.get(withScope(`/tenants/${tenant.id}/ai-training/knowledge`)),
+          api.get(withScope(`/tenants/${tenant.id}/ai-training/examples`))
         ])
         setAiConfig({
           geminiApiKey: '',
@@ -111,7 +146,8 @@ const TenantAiTrainingTab = ({ tenant }: Props) => {
       }
     }
     fetchAll()
-  }, [tenant.id])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tenant.id, selectedAgentId, agentArea])
 
   const handleSaveConfig = async (e: FormEvent) => {
     e.preventDefault()
@@ -125,7 +161,7 @@ const TenantAiTrainingTab = ({ tenant }: Props) => {
       }
       if (aiConfig.geminiApiKey.trim()) body.geminiApiKey = aiConfig.geminiApiKey.trim()
 
-      const res = await api.patch(`/tenants/${tenant.id}/ai-training/config`, body)
+      const res = await api.patch(withScope(`/tenants/${tenant.id}/ai-training/config`), body)
       setAiConfig(prev => ({
         ...prev,
         geminiApiKey: '',
@@ -155,7 +191,7 @@ const TenantAiTrainingTab = ({ tenant }: Props) => {
         setRules(prev => prev.map(r => (r.id === res.data.id ? res.data : r)))
         toast.success('Regla actualizada')
       } else {
-        const res = await api.post(`/tenants/${tenant.id}/ai-training/rules`, payload)
+        const res = await api.post(withScope(`/tenants/${tenant.id}/ai-training/rules`), payload)
         setRules(prev => [...prev, res.data])
         toast.success('Regla creada')
       }
@@ -185,7 +221,7 @@ const TenantAiTrainingTab = ({ tenant }: Props) => {
         setKnowledge(prev => prev.map(k => (k.id === res.data.id ? res.data : k)))
         toast.success('Conocimiento actualizado')
       } else {
-        const res = await api.post(`/tenants/${tenant.id}/ai-training/knowledge`, payload)
+        const res = await api.post(withScope(`/tenants/${tenant.id}/ai-training/knowledge`), payload)
         setKnowledge(prev => [res.data, ...prev])
         toast.success('Conocimiento agregado')
       }
@@ -202,7 +238,7 @@ const TenantAiTrainingTab = ({ tenant }: Props) => {
     e.preventDefault()
     setIsSavingExample(true)
     try {
-      const res = await api.post(`/tenants/${tenant.id}/ai-training/examples`, exampleForm)
+      const res = await api.post(withScope(`/tenants/${tenant.id}/ai-training/examples`), exampleForm)
       setExamples(prev => [res.data, ...prev])
       toast.success('Ejemplo de respuesta guardado')
       setOpenExampleDialog(false)
@@ -222,7 +258,7 @@ const TenantAiTrainingTab = ({ tenant }: Props) => {
     setIsSimulating(true)
     setSimHistory(prev => [...prev, { sender: 'user', text: msg }])
     try {
-      const res = await api.post(`/tenants/${tenant.id}/ai-training/simulate`, { message: msg })
+      const res = await api.post(withScope(`/tenants/${tenant.id}/ai-training/simulate`), { message: msg })
       setSimHistory(prev => [...prev, { sender: 'bot', text: res.data.response, meta: res.data }])
     } catch (err: any) {
       setSimHistory(prev => [...prev, { sender: 'bot', text: `[Error]: ${err?.response?.data?.message || err.message}` }])
@@ -233,6 +269,25 @@ const TenantAiTrainingTab = ({ tenant }: Props) => {
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+      {!agentArea && agents.length > 0 && (
+        <CustomTextField
+          select
+          size='small'
+          label='Agente IA a Entrenar'
+          value={selectedAgentId}
+          onChange={e => {
+            setSelectedAgentId(e.target.value)
+            setSimHistory([])
+          }}
+          sx={{ maxWidth: 360 }}
+        >
+          {agents.map(agent => (
+            <MenuItem key={agent.id} value={agent.id}>
+              {agent.name} ({agent.whatsappPhone || agent.area})
+            </MenuItem>
+          ))}
+        </CustomTextField>
+      )}
       <Tabs value={subTab} onChange={(_, val) => setSubTab(val)} variant='scrollable' scrollButtons='auto'>
         <Tab label='Identidad & Modelo' />
         <Tab label={`Reglas (${rules.length})`} />

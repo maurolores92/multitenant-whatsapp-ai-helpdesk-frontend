@@ -31,6 +31,7 @@ import { getInitials } from 'src/@core/utils/get-initials'
 // ** API, Hooks & Subcomponents
 import api from 'src/configs/api'
 import authConfig from 'src/configs/auth'
+import { getPermissionModuleBadges } from 'src/configs/permissions'
 import { useAuth } from 'src/hooks/useAuth'
 import { UserItem } from './types'
 import AddUserDrawer from './AddUserDrawer'
@@ -58,7 +59,8 @@ const UsersView = () => {
     name: '',
     email: '',
     role: 'TECHNICIAN' as UserItem['role'],
-    isActive: true
+    isActive: true,
+    permissions: [] as string[]
   })
   const [isSubmittingEdit, setIsSubmittingEdit] = useState(false)
 
@@ -128,7 +130,8 @@ const UsersView = () => {
           ...sessionUser,
           name: res.data?.name ?? editForm.name,
           fullName: res.data?.name ?? editForm.name,
-          email: res.data?.email ?? editForm.email
+          email: res.data?.email ?? editForm.email,
+          permissions: Array.isArray(res.data?.permissions) ? res.data.permissions : sessionUser.permissions
         }
         setUser(updatedSessionUser)
         if (typeof window !== 'undefined') {
@@ -248,6 +251,24 @@ const UsersView = () => {
       }
     },
     {
+      flex: 0.24,
+      minWidth: 210,
+      sortable: false,
+      field: 'permissions',
+      headerName: 'Módulos / Permisos',
+      renderCell: ({ row }: { row: UserItem }) => {
+        const badges = getPermissionModuleBadges(row.permissions || [], row.role)
+
+        return (
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+            {badges.map(b => (
+              <CustomChip key={b.label} rounded skin='light' size='small' color={b.color} label={b.label} />
+            ))}
+          </Box>
+        )
+      }
+    },
+    {
       flex: 0.14,
       minWidth: 110,
       field: 'isActive',
@@ -307,7 +328,8 @@ const UsersView = () => {
                     name: row.name,
                     email: row.email,
                     role: row.role,
-                    isActive: row.isActive
+                    isActive: row.isActive,
+                    permissions: row.permissions || []
                   })
                 }}
               >

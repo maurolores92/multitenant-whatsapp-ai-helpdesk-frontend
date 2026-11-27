@@ -18,8 +18,10 @@ import toast from 'react-hot-toast'
 import Icon from 'src/@core/components/icon'
 import CustomTextField from 'src/@core/components/mui/text-field'
 
-// ** API
+// ** API & Subcomponents
 import api from 'src/configs/api'
+import { ROLE_DEFAULT_PERMISSIONS } from 'src/configs/permissions'
+import UserPermissionsSelector from './UserPermissionsSelector'
 
 interface Props {
   open: boolean
@@ -35,11 +37,18 @@ const Header = styled(Box)(({ theme }) => ({
 }))
 
 const AddUserDrawer = ({ open, onClose, onSuccess }: Props) => {
-  const [form, setForm] = useState({
+  const [form, setForm] = useState<{
+    name: string
+    email: string
+    password: string
+    role: 'ADMIN' | 'TECHNICIAN' | 'AGENT'
+    permissions: string[]
+  }>({
     name: '',
     email: '',
     password: '',
-    role: 'TECHNICIAN' as 'ADMIN' | 'TECHNICIAN' | 'AGENT'
+    role: 'TECHNICIAN',
+    permissions: [...ROLE_DEFAULT_PERMISSIONS.TECHNICIAN]
   })
   const [showPassword, setShowPassword] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -61,7 +70,13 @@ const AddUserDrawer = ({ open, onClose, onSuccess }: Props) => {
     try {
       const res = await api.post('/users', form)
       toast.success(`Usuario ${res.data.name} creado exitosamente`)
-      setForm({ name: '', email: '', password: '', role: 'TECHNICIAN' })
+      setForm({
+        name: '',
+        email: '',
+        password: '',
+        role: 'TECHNICIAN',
+        permissions: [...ROLE_DEFAULT_PERMISSIONS.TECHNICIAN]
+      })
       onClose()
       onSuccess()
     } catch (err: any) {
@@ -79,7 +94,7 @@ const AddUserDrawer = ({ open, onClose, onSuccess }: Props) => {
       variant='temporary'
       onClose={() => !isSubmitting && onClose()}
       ModalProps={{ keepMounted: true }}
-      sx={{ '& .MuiDrawer-paper': { width: { xs: 300, sm: 400 } } }}
+      sx={{ '& .MuiDrawer-paper': { width: { xs: 320, sm: 460 } } }}
     >
       <Header>
         <Typography variant='h5'>Nuevo Usuario</Typography>
@@ -125,13 +140,20 @@ const AddUserDrawer = ({ open, onClose, onSuccess }: Props) => {
           select
           fullWidth
           required
-          label='Rol en la Empresa'
+          label='Rol Base'
           value={form.role}
-          onChange={e => setForm({ ...form, role: e.target.value as any })}
+          onChange={e => {
+            const nextRole = e.target.value as 'ADMIN' | 'TECHNICIAN' | 'AGENT'
+            setForm({
+              ...form,
+              role: nextRole,
+              permissions: [...ROLE_DEFAULT_PERMISSIONS[nextRole]]
+            })
+          }}
         >
-          <MenuItem value='ADMIN'>Administrador (Acceso total)</MenuItem>
-          <MenuItem value='TECHNICIAN'>Técnico Especialista (Órdenes y visitas)</MenuItem>
-          <MenuItem value='AGENT'>Operador Soporte (WhatsApp Chat)</MenuItem>
+          <MenuItem value='ADMIN'>Administrador (Acceso completo)</MenuItem>
+          <MenuItem value='TECHNICIAN'>Técnico Especialista (Servicio Técnico)</MenuItem>
+          <MenuItem value='AGENT'>Operador Soporte (Atención)</MenuItem>
         </CustomTextField>
 
         <CustomTextField
@@ -151,6 +173,12 @@ const AddUserDrawer = ({ open, onClose, onSuccess }: Props) => {
               </InputAdornment>
             )
           }}
+        />
+
+        <UserPermissionsSelector
+          permissions={form.permissions}
+          onChange={permissions => setForm({ ...form, permissions })}
+          disabled={isSubmitting}
         />
 
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 3, mt: 2 }}>

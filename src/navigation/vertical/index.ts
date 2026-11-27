@@ -4,11 +4,6 @@ import { VerticalNavItemsType } from 'src/@core/layouts/types'
 const navigation = (): VerticalNavItemsType => {
   return [
     {
-      sectionTitle: 'Operaciones & Soporte',
-      action: 'read',
-      subject: 'dashboard'
-    },
-    {
       title: 'Dashboard',
       icon: 'tabler:smart-home',
       path: '/dashboard',
@@ -16,18 +11,30 @@ const navigation = (): VerticalNavItemsType => {
       subject: 'dashboard'
     },
     {
-      title: 'WhatsApp Chat',
+      sectionTitle: 'Servicio Técnico',
+      action: 'read',
+      subject: 'tickets'
+    },
+    {
+      title: 'Chats de IA',
       icon: 'tabler:brand-whatsapp',
       path: '/chat',
       action: 'read',
       subject: 'chat'
     },
     {
-      title: 'Tickets & IA',
+      title: 'Tickets',
       icon: 'tabler:ticket',
       path: '/tickets',
       action: 'read',
       subject: 'tickets'
+    },
+    {
+      title: 'IA Servicio Técnico',
+      icon: 'tabler:robot',
+      path: '/technical-ai',
+      action: 'read',
+      subject: 'technical-ai'
     },
     {
       sectionTitle: 'Administración',
@@ -35,14 +42,14 @@ const navigation = (): VerticalNavItemsType => {
       subject: 'users'
     },
     {
-      title: 'Compañías',
+      title: 'Empresa & Agentes',
       icon: 'tabler:building',
       path: '/companies',
       action: 'manage',
       subject: 'companies'
     },
     {
-      title: 'Usuarios',
+      title: 'Usuarios y Permisos',
       icon: 'tabler:users',
       path: '/users',
       action: 'manage',

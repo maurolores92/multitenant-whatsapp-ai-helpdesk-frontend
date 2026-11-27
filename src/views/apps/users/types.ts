@@ -4,6 +4,8 @@ export interface UserItem {
   email: string
   role: 'SUPER_ADMIN' | 'ADMIN' | 'TECHNICIAN' | 'AGENT'
   isActive: boolean
+  useCustomPermissions?: boolean
+  permissions?: string[]
   createdAt: string
   tenantId?: string
   tenant?: {

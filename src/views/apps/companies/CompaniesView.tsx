@@ -6,7 +6,6 @@ import Box from '@mui/material/Box'
 import Card from '@mui/material/Card'
 import Grid from '@mui/material/Grid'
 import Table from '@mui/material/Table'
-import Button from '@mui/material/Button'
 import Tooltip from '@mui/material/Tooltip'
 import TableRow from '@mui/material/TableRow'
 import TableHead from '@mui/material/TableHead'
@@ -30,13 +29,11 @@ import CardStatsHorizontalWithDetails from 'src/@core/components/card-statistics
 // ** API & Subcomponents
 import api from 'src/configs/api'
 import { TenantItem } from './types'
-import CreateTenantDialog from './CreateTenantDialog'
 import TenantActionModals, { CompanyModalType } from './TenantActionModals'
 
 const CompaniesView = () => {
   const [tenants, setTenants] = useState<TenantItem[]>([])
   const [isLoading, setIsLoading] = useState(true)
-  const [openCreateDialog, setOpenCreateDialog] = useState(false)
   const [activeModal, setActiveModal] = useState<{ type: CompanyModalType; tenant: TenantItem } | null>(null)
 
   const fetchTenants = useCallback(async () => {
@@ -72,9 +69,9 @@ const CompaniesView = () => {
         <CardStatsHorizontalWithDetails
           stats={String(tenants.length)}
           trend='positive'
-          trendDiff='Activas'
-          title='Compañías Registradas'
-          subtitle='Entornos Multi-Tenant'
+          trendDiff='Única'
+          title='Empresa Activa'
+          subtitle='Modo Mono-Empresa Protegido'
           avatarColor='info'
           icon='tabler:building'
         />
@@ -116,17 +113,8 @@ const CompaniesView = () => {
       <Grid item xs={12}>
         <Card>
           <CardHeader
-            title='Gestión de Compañías (Multi-Tenant)'
-            subheader='Panel exclusivo de Superadministrador para provisión de empresas, líneas WhatsApp y entrenamiento IA'
-            action={
-              <Button
-                variant='contained'
-                startIcon={<Icon icon='tabler:plus' />}
-                onClick={() => setOpenCreateDialog(true)}
-              >
-                Nueva Compañía
-              </Button>
-            }
+            title='Empresa Principal & Agentes (HelpCopies SRL)'
+            subheader='La empresa principal generada por el sistema está protegida: no se puede eliminar ni crear otras compañías manualmente'
           />
           <TableContainer>
             <Table>
@@ -195,13 +183,24 @@ const CompaniesView = () => {
                           </Typography>
                         </TableCell>
                         <TableCell>
-                          <CustomChip
-                            rounded
-                            skin='light'
-                            size='small'
-                            label={t.isActive ? 'Activa' : 'Inactiva'}
-                            color={t.isActive ? 'success' : 'error'}
-                          />
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+                            <CustomChip
+                              rounded
+                              skin='light'
+                              size='small'
+                              label={t.isActive ? 'Activa' : 'Inactiva'}
+                              color={t.isActive ? 'success' : 'error'}
+                            />
+                            {(t.isSystem || t.slug === 'helpcopies') && (
+                              <CustomChip
+                                rounded
+                                skin='light'
+                                size='small'
+                                label='Protegida'
+                                color='primary'
+                              />
+                            )}
+                          </Box>
                         </TableCell>
                         <TableCell align='right'>
                           <Tooltip title='Usuarios de la Compañía'>
@@ -250,12 +249,6 @@ const CompaniesView = () => {
           </TableContainer>
         </Card>
       </Grid>
-
-      <CreateTenantDialog
-        open={openCreateDialog}
-        onClose={() => setOpenCreateDialog(false)}
-        onSuccess={fetchTenants}
-      />
 
       <TenantActionModals
         activeModal={activeModal}

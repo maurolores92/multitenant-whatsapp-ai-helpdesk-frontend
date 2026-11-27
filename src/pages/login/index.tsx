@@ -29,8 +29,9 @@ import { yupResolver } from '@hookform/resolvers/yup'
 // ** Hooks
 import { useAuth } from 'src/hooks/useAuth'
 
-// ** Configs
+// ** Configs & Logo
 import themeConfig from 'src/configs/themeConfig'
+import AppLogo from 'src/layouts/components/AppLogo'
 
 // ** Layout Import
 import BlankLayout from 'src/@core/layouts/BlankLayout'
@@ -157,20 +158,7 @@ const LoginPage = () => {
         >
           <Box sx={{ width: '100%', maxWidth: 400 }}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-              <Box
-                sx={{
-                  width: 44,
-                  height: 44,
-                  borderRadius: 2,
-                  bgcolor: 'primary.main',
-                  color: 'common.white',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center'
-                }}
-              >
-                <Icon icon='tabler:robot' fontSize='1.75rem' />
-              </Box>
+              <AppLogo size={44} />
               <Typography variant='h4' sx={{ fontWeight: 700 }}>
                 {themeConfig.templateName}
               </Typography>

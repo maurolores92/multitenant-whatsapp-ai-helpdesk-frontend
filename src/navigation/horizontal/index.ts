@@ -11,28 +11,35 @@ const navigation = (): HorizontalNavItemsType => {
       subject: 'dashboard'
     },
     {
-      title: 'WhatsApp Chat',
+      title: 'Chats de IA',
       icon: 'tabler:brand-whatsapp',
       path: '/chat',
       action: 'read',
       subject: 'chat'
     },
     {
-      title: 'Tickets & IA',
+      title: 'Tickets',
       icon: 'tabler:ticket',
       path: '/tickets',
       action: 'read',
       subject: 'tickets'
     },
     {
-      title: 'Compañías',
+      title: 'IA Servicio Técnico',
+      icon: 'tabler:robot',
+      path: '/technical-ai',
+      action: 'read',
+      subject: 'technical-ai'
+    },
+    {
+      title: 'Empresa & Agentes',
       icon: 'tabler:building',
       path: '/companies',
       action: 'manage',
       subject: 'companies'
     },
     {
-      title: 'Usuarios',
+      title: 'Usuarios y Permisos',
       icon: 'tabler:users',
       path: '/users',
       action: 'manage',

@@ -18,13 +18,15 @@ import FormControlLabel from '@mui/material/FormControlLabel'
 import Icon from 'src/@core/components/icon'
 import CustomTextField from 'src/@core/components/mui/text-field'
 
-// ** Types
+// ** Types & Subcomponents
+import { ROLE_DEFAULT_PERMISSIONS } from 'src/configs/permissions'
 import { UserItem } from './types'
+import UserPermissionsSelector from './UserPermissionsSelector'
 
 interface EditUserDialogProps {
   user: UserItem | null
   currentUserId?: string
-  form: { name: string; email: string; role: UserItem['role']; isActive: boolean }
+  form: { name: string; email: string; role: UserItem['role']; isActive: boolean; permissions: string[] }
   isSubmitting: boolean
   onClose: () => void
   onChangeForm: (form: any) => void
@@ -40,11 +42,11 @@ export const EditUserDialog = ({
   onChangeForm,
   onSubmit
 }: EditUserDialogProps) => (
-  <Dialog open={Boolean(user)} onClose={() => !isSubmitting && onClose()} maxWidth='xs' fullWidth>
+  <Dialog open={Boolean(user)} onClose={() => !isSubmitting && onClose()} maxWidth='sm' fullWidth>
     {user && (
       <form onSubmit={onSubmit}>
         <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <span>Editar Usuario</span>
+          <span>Editar Usuario y Permisos</span>
           <IconButton size='small' onClick={onClose}>
             <Icon icon='tabler:x' />
           </IconButton>
@@ -66,18 +68,33 @@ export const EditUserDialog = ({
             onChange={e => onChangeForm({ ...form, email: e.target.value })}
           />
           {user.role !== 'SUPER_ADMIN' && (
-            <CustomTextField
-              select
-              fullWidth
-              required
-              label='Rol en la Empresa'
-              value={form.role}
-              onChange={e => onChangeForm({ ...form, role: e.target.value })}
-            >
-              <MenuItem value='ADMIN'>Administrador</MenuItem>
-              <MenuItem value='TECHNICIAN'>Técnico Especialista</MenuItem>
-              <MenuItem value='AGENT'>Operador Soporte</MenuItem>
-            </CustomTextField>
+            <>
+              <CustomTextField
+                select
+                fullWidth
+                required
+                label='Rol Base en la Empresa'
+                value={form.role}
+                onChange={e => {
+                  const nextRole = e.target.value as 'ADMIN' | 'TECHNICIAN' | 'AGENT'
+                  onChangeForm({
+                    ...form,
+                    role: nextRole,
+                    permissions: [...ROLE_DEFAULT_PERMISSIONS[nextRole]]
+                  })
+                }}
+              >
+                <MenuItem value='ADMIN'>Administrador</MenuItem>
+                <MenuItem value='TECHNICIAN'>Técnico Especialista</MenuItem>
+                <MenuItem value='AGENT'>Operador Soporte</MenuItem>
+              </CustomTextField>
+
+              <UserPermissionsSelector
+                permissions={form.permissions}
+                onChange={permissions => onChangeForm({ ...form, permissions })}
+                disabled={isSubmitting}
+              />
+            </>
           )}
           <FormControlLabel
             control={

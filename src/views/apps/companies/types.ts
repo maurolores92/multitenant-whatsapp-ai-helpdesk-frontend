@@ -4,6 +4,8 @@ export interface TenantUser {
   email: string
   role: string
   isActive: boolean
+  useCustomPermissions?: boolean
+  permissions?: string[]
   createdAt?: string
 }
 
@@ -12,6 +14,7 @@ export interface TenantItem {
   name: string
   slug: string
   isActive: boolean
+  isSystem?: boolean
   whatsappPhone?: string
   whatsappPhoneNumberId?: string
   whatsappWabaId?: string
@@ -32,6 +35,35 @@ export interface TenantItem {
     aiKnowledgeItems?: number
   }
   users: TenantUser[]
+}
+
+export type AgentArea = 'TECHNICAL_SERVICE' | 'ACCOUNTING' | 'GENERAL'
+
+export interface WhatsAppAgentItem {
+  id: string
+  tenantId: string
+  code: string
+  name: string
+  area: AgentArea
+  isActive: boolean
+  isDefault: boolean
+  whatsappPhone?: string | null
+  whatsappPhoneNumberId?: string | null
+  whatsappWabaId?: string | null
+  whatsappAccessToken?: string | null
+  hasWhatsAppToken?: boolean
+  whatsappStatus: string
+  geminiModel?: string
+  aiTemperature?: number
+  aiSystemPrompt?: string | null
+  aiEnabled: boolean
+  _count?: {
+    conversations: number
+    tickets: number
+    aiRules: number
+    aiKnowledgeItems: number
+    aiTrainingExamples: number
+  }
 }
 
 export type AiRuleCategory = 'TONE' | 'RESTRICTION' | 'BUSINESS' | 'ESCALATION'
