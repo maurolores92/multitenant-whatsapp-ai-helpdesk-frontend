@@ -895,6 +895,15 @@ const TenantAiTrainingTab = ({ tenant, agentArea }: Props) => {
                           }`}
                         />
                       )}
+                      {msg.meta.matchedEquipment?.openTicketId && (
+                        <CustomChip
+                          rounded
+                          skin='light'
+                          size='small'
+                          color='warning'
+                          label={`Ticket abierto #${String(msg.meta.matchedEquipment.openTicketId).slice(-4).toUpperCase()} (${msg.meta.matchedEquipment.openTicketStatus})`}
+                        />
+                      )}
                     </Box>
                   )}
                 </Box>
