@@ -1,5 +1,5 @@
 // ** React Imports
-import { useState, useEffect, FormEvent } from 'react'
+import { useState, useEffect, useRef, ChangeEvent, FormEvent } from 'react'
 
 // ** MUI Imports
 import Box from '@mui/material/Box'
@@ -93,16 +93,23 @@ const TenantAiTrainingTab = ({ tenant, agentArea }: Props) => {
   const [isSavingExample, setIsSavingExample] = useState(false)
 
   const [simInput, setSimInput] = useState('')
+  const [simImage, setSimImage] = useState<{
+    dataUrl: string
+    base64: string
+    mimeType: string
+    name: string
+  } | null>(null)
+  const simFileInputRef = useRef<HTMLInputElement>(null)
   const [isSimulating, setIsSimulating] = useState(false)
   const [simHistory, setSimHistory] = useState<
-    Array<{ sender: 'user' | 'bot'; text: string; timestamp?: string; meta?: any }>
+    Array<{ sender: 'user' | 'bot'; text: string; imageDataUrl?: string; timestamp?: string; meta?: any }>
   >([])
 
   const simStorageKey = `helpdesk_sim_${tenant.id}_${selectedAgentId || agentArea || 'default'}`
   const isTechnicalAgent = aiConfig.currentAgentArea === 'TECHNICAL_SERVICE'
 
   const filterRecentSimHistory = (
-    items: Array<{ sender: 'user' | 'bot'; text: string; timestamp?: string; meta?: any }>,
+    items: Array<{ sender: 'user' | 'bot'; text: string; imageDataUrl?: string; timestamp?: string; meta?: any }>,
     hours: number,
   ) => {
     const cutoff = Date.now() - hours * 60 * 60 * 1000
@@ -304,18 +311,57 @@ const TenantAiTrainingTab = ({ tenant, agentArea }: Props) => {
   }
 
   const persistSimHistory = (
-    items: Array<{ sender: 'user' | 'bot'; text: string; timestamp?: string; meta?: any }>,
+    items: Array<{ sender: 'user' | 'bot'; text: string; imageDataUrl?: string; timestamp?: string; meta?: any }>,
   ) => {
     if (typeof window === 'undefined' || !isTechnicalAgent) return
     try {
-      window.localStorage.setItem(simStorageKey, JSON.stringify(items.slice(-30)))
+      // Guardar en localStorage omitiendo imageDataUrl pesado para no saturar la cuota del navegador
+      const lightweight = items.slice(-30).map(item => ({
+        sender: item.sender,
+        text: item.text,
+        ...(item.timestamp ? { timestamp: item.timestamp } : {}),
+        ...(item.meta ? { meta: item.meta } : {})
+      }))
+      window.localStorage.setItem(simStorageKey, JSON.stringify(lightweight))
     } catch {
       // Ignorar límite de storage
     }
   }
 
+  const handleSelectSimImage = (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (!file) return
+    if (!file.type.startsWith('image/')) {
+      toast.error('Selecciona un archivo de imagen válido (JPG, PNG, WEBP)')
+
+      return
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('La imagen no debe superar los 5 MB')
+
+      return
+    }
+
+    const reader = new FileReader()
+    reader.onload = () => {
+      const dataUrl = String(reader.result || '')
+      const match = dataUrl.match(/^data:([^;]+);base64,(.+)$/)
+      if (match) {
+        setSimImage({
+          dataUrl,
+          mimeType: match[1] || file.type,
+          base64: match[2],
+          name: file.name
+        })
+      }
+    }
+    reader.readAsDataURL(file)
+  }
+
   const handleResetSimulation = () => {
     setSimHistory([])
+    setSimImage(null)
     if (typeof window !== 'undefined') {
       window.localStorage.removeItem(simStorageKey)
     }
@@ -324,24 +370,36 @@ const TenantAiTrainingTab = ({ tenant, agentArea }: Props) => {
 
   const handleRunSimulation = async (e: FormEvent) => {
     e.preventDefault()
-    if (!simInput.trim()) return
-    const msg = simInput.trim()
+    if (!simInput.trim() && !simImage) return
+    const msg = simInput.trim() || '[Imagen enviada por el cliente]'
+    const attachedImage = simImage
     const nowIso = new Date().toISOString()
     const activeHistory = isTechnicalAgent ? filterRecentSimHistory(simHistory, aiConfig.aiContextHours) : []
-    const userTurn = { sender: 'user' as const, text: msg, timestamp: nowIso }
+    const userTurn = {
+      sender: 'user' as const,
+      text: msg,
+      ...(attachedImage ? { imageDataUrl: attachedImage.dataUrl } : {}),
+      timestamp: nowIso
+    }
     const withUser = [...activeHistory, userTurn]
 
     setSimInput('')
+    setSimImage(null)
     setIsSimulating(true)
     setSimHistory(withUser)
     persistSimHistory(withUser)
 
     try {
       const payload: any = { message: msg }
+      if (attachedImage) {
+        payload.imageBase64 = attachedImage.base64
+        payload.imageMimeType = attachedImage.mimeType
+      }
       if (isTechnicalAgent && activeHistory.length > 0) {
         payload.history = activeHistory.map(item => ({
           sender: item.sender,
           text: item.text,
+          ...(item.imageDataUrl ? { imageDataUrl: item.imageDataUrl } : {}),
           ...(item.timestamp ? { timestamp: item.timestamp } : {})
         }))
       }
@@ -872,6 +930,21 @@ const TenantAiTrainingTab = ({ tenant, agentArea }: Props) => {
                       color: msg.sender === 'user' ? 'common.white' : 'text.primary'
                     }}
                   >
+                    {msg.imageDataUrl && (
+                      <Box
+                        component='img'
+                        src={msg.imageDataUrl}
+                        alt='Imagen de simulación'
+                        sx={{
+                          display: 'block',
+                          maxWidth: '100%',
+                          maxHeight: 180,
+                          borderRadius: 1,
+                          mb: 1,
+                          objectFit: 'contain'
+                        }}
+                      />
+                    )}
                     <Typography variant='body2' sx={{ whiteSpace: 'pre-wrap' }}>
                       {msg.text}
                     </Typography>
@@ -910,15 +983,50 @@ const TenantAiTrainingTab = ({ tenant, agentArea }: Props) => {
               ))
             )}
           </Paper>
-          <Box component='form' onSubmit={handleRunSimulation} sx={{ display: 'flex', gap: 2 }}>
+          {simImage && (
+            <Paper
+              variant='outlined'
+              sx={{ p: 1.5, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 2 }}
+            >
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                <Box
+                  component='img'
+                  src={simImage.dataUrl}
+                  alt={simImage.name}
+                  sx={{ width: 48, height: 48, objectFit: 'cover', borderRadius: 1 }}
+                />
+                <Typography variant='caption'>{simImage.name}</Typography>
+              </Box>
+              <IconButton size='small' onClick={() => setSimImage(null)}>
+                <Icon icon='tabler:x' fontSize='1rem' />
+              </IconButton>
+            </Paper>
+          )}
+          <Box component='form' onSubmit={handleRunSimulation} sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+            <input
+              ref={simFileInputRef}
+              type='file'
+              accept='image/*'
+              hidden
+              onChange={handleSelectSimImage}
+            />
+            <Tooltip title='Adjuntar foto (etiqueta, pantalla de error u hoja impresa)'>
+              <IconButton
+                color='primary'
+                onClick={() => simFileInputRef.current?.click()}
+                disabled={isSimulating}
+              >
+                <Icon icon='tabler:photo' />
+              </IconButton>
+            </Tooltip>
             <CustomTextField
               fullWidth
-              placeholder='Ej: Hola, mi fotocopiadora tira error E-402 y huele a quemado...'
+              placeholder='Escribe un mensaje o adjunta una foto del equipo / etiqueta / falla...'
               value={simInput}
               onChange={e => setSimInput(e.target.value)}
               disabled={isSimulating}
             />
-            <Button type='submit' variant='contained' disabled={isSimulating || !simInput.trim()}>
+            <Button type='submit' variant='contained' disabled={isSimulating || (!simInput.trim() && !simImage)}>
               {isSimulating ? <CircularProgress size={20} color='inherit' /> : 'Probar IA'}
             </Button>
           </Box>

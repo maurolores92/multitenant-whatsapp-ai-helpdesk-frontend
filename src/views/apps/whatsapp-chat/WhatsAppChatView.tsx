@@ -92,6 +92,8 @@ const mapBackendMessage = (m: any, fallbackCustomerName = 'Cliente'): ChatMessag
           ? m.senderUser?.name || 'Operador'
           : fallbackCustomerName,
   content: m.content,
+  mediaUrl: m.mediaUrl || null,
+  mediaType: m.mediaType || null,
   time: new Date(m.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
 })
 

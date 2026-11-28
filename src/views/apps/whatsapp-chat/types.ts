@@ -3,6 +3,8 @@ export interface ChatMessage {
   senderType: 'CUSTOMER' | 'BOT' | 'AGENT' | 'SYSTEM'
   senderName: string
   content: string
+  mediaUrl?: string | null
+  mediaType?: string | null
   time: string
 }
 

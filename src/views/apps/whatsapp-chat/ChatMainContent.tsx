@@ -1,5 +1,5 @@
 // ** React Imports
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 // ** MUI Imports
 import Box from '@mui/material/Box'
@@ -8,6 +8,8 @@ import Alert from '@mui/material/Alert'
 import Paper from '@mui/material/Paper'
 import Stack from '@mui/material/Stack'
 import Button from '@mui/material/Button'
+import Dialog from '@mui/material/Dialog'
+import DialogContent from '@mui/material/DialogContent'
 import Tooltip from '@mui/material/Tooltip'
 import IconButton from '@mui/material/IconButton'
 import Typography from '@mui/material/Typography'
@@ -49,6 +51,7 @@ const ChatMainContent = (props: Props) => {
   } = props
 
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  const [previewImageUrl, setPreviewImageUrl] = useState<string | null>(null)
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -239,6 +242,25 @@ const ChatMainContent = (props: Props) => {
                     </Typography>
                   </Stack>
 
+                  {msg.mediaUrl && (msg.mediaType?.startsWith('image/') || msg.mediaUrl.startsWith('data:image/')) && (
+                    <Box
+                      component='img'
+                      src={msg.mediaUrl}
+                      alt='Imagen adjunta de WhatsApp'
+                      onClick={() => setPreviewImageUrl(msg.mediaUrl || null)}
+                      sx={{
+                        display: 'block',
+                        maxWidth: '100%',
+                        maxHeight: 260,
+                        borderRadius: 1.5,
+                        mb: 1.5,
+                        cursor: 'zoom-in',
+                        objectFit: 'contain',
+                        border: theme => `1px solid ${theme.palette.divider}`
+                      }}
+                    />
+                  )}
+
                   <Typography
                     variant='body2'
                     sx={{
@@ -311,6 +333,26 @@ const ChatMainContent = (props: Props) => {
           </Button>
         </Stack>
       </Box>
+
+      <Dialog open={Boolean(previewImageUrl)} onClose={() => setPreviewImageUrl(null)} maxWidth='md'>
+        <DialogContent sx={{ p: 2, position: 'relative' }}>
+          <IconButton
+            size='small'
+            onClick={() => setPreviewImageUrl(null)}
+            sx={{ position: 'absolute', top: 8, right: 8, bgcolor: 'background.paper' }}
+          >
+            <Icon icon='tabler:x' />
+          </IconButton>
+          {previewImageUrl && (
+            <Box
+              component='img'
+              src={previewImageUrl}
+              alt='Vista ampliada'
+              sx={{ maxWidth: '100%', maxHeight: '80vh', display: 'block', borderRadius: 1 }}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </Box>
   )
 }
